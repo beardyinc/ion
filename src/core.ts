@@ -85,6 +85,14 @@ router.get(`${resolvePath}:did`, async (ctx, _next) => {
     setKoaResponse(response, ctx.response);
 });
 
+router.get(`${resolvePath}`, async (ctx, _next) => {
+    const types= ctx.request.query["type"]
+    console.log(`querying for type ${types}`)
+    let dids = await mongo.findByType(types)
+    ctx.response.status = 200;
+    ctx.response.body= dids;
+})
+
 router.get('/monitor/operation-queue-size', async (ctx, _next) => {
     const body = await sidetreeCore.monitor.getOperationQueueSize();
     const response = {status: ResponseStatus.Succeeded, body};
