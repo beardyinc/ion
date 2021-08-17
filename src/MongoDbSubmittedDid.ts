@@ -5,17 +5,18 @@ interface IMongoSubmittedDid {
     didSuffix: string;
     type: string[];
     document: Binary;
+    timestamp: Date;
 }
 
 export class SubmittedDidModel {
     didSuffix: string;
     type: string[];
-    document: object;
+    timestamp: Date;
 
-    constructor (didSuffix: string, type: string[], document: object) {
+    constructor (didSuffix: string, type: string[], timestamp: Date) {
         this.didSuffix = didSuffix;
         this.type = type;
-        this.document = document;
+        this.timestamp = timestamp;
     }
 }
 
@@ -41,7 +42,8 @@ export default class MongoDbSubmittedDid {
             const queuedOperation: IMongoSubmittedDid = {
                 didSuffix: didId,
                 type: type,
-                document: new Binary(document)
+                document: new Binary(document),
+                timestamp: new Date()
             };
 
             await this.collection!.insertOne(queuedOperation);
@@ -55,11 +57,21 @@ export default class MongoDbSubmittedDid {
         }
     }
 
-    async findByType (...types: string[]): Promise<SubmittedDidModel[]> {
+    async findByType (since: string | undefined, ...types: string[]): Promise<SubmittedDidModel[]> {
         try {
-            let cursor=  await this.collection!.find({type: {$all: types}}).toArray();
+            let cursor;
+            if (since) {
+                let partition = await this.collection!.find({didSuffix: since}).limit(1).toArray();
+                if (partition && partition.length > 0) {
+                    let entity = partition[0];
+                    let timestamp = entity.timestamp;
 
-            return cursor.map(entity => new SubmittedDidModel(entity.didSuffix, entity.type, JSON.parse(entity.document.buffer.toString())));
+                    cursor = await this.collection!.find({type: {$all: types}, timestamp: {$gte: timestamp}}).toArray()
+                }
+            } else {
+                cursor = await this.collection!.find({type: {$all: types}}).toArray();
+            }
+            return !cursor ? new Array<SubmittedDidModel>() : cursor.map(entity => new SubmittedDidModel(entity.didSuffix, entity.type, entity.timestamp));
         } catch (error) {
             console.error(error);
             throw error;

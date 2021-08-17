@@ -87,8 +87,9 @@ router.get(`${resolvePath}:did`, async (ctx, _next) => {
 
 router.get(`${resolvePath}`, async (ctx, _next) => {
     const types= ctx.request.query["type"]
+    const since= ctx.request.query["since"]
     console.log(`querying for type ${types}`)
-    let dids = await mongo.findByType(types)
+    let dids = await mongo.findByType(since, types)
     ctx.response.status = 200;
     ctx.response.body= dids;
 })
