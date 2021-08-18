@@ -11,6 +11,7 @@ import {
   SidetreeVersionModel
 } from '@decentralized-identity/sidetree';
 import ResponseStatus from '@decentralized-identity/sidetree/dist/lib/common/enums/ResponseStatus';
+import Crawler from './crawler';
 
 /** Configuration used by this server. */
 interface ServerConfig extends SidetreeConfig {
@@ -19,6 +20,12 @@ interface ServerConfig extends SidetreeConfig {
 
   /** Port to be used by the server. */
   port: number;
+
+  /** a 4byte string in the base64 alphabet to mark a gaia-x did */
+  didType: string;
+
+  /** database that holds transactions with CAS hashes*/
+  transactionDatabaseName: string;
 }
 
 // Selecting core config file, environment variable overrides default config file.
@@ -44,8 +51,10 @@ const coreVersions: SidetreeVersionModel[] = require(versioningConfigFilePath);
 const ipfsFetchTimeoutInSeconds = 10;
 const cas = new Ipfs(config.ipfsHttpApiEndpointUri, ipfsFetchTimeoutInSeconds);
 const sidetreeCore = new SidetreeCore(config, coreVersions, cas);
+let crawler = new Crawler(config.mongoDbConnectionString, config.transactionDatabaseName || 'ion-mainnet-bitcoin', cas);
 
 const app = new Koa();
+
 
 // Raw body parser.
 app.use(async (ctx, next) => {
@@ -82,6 +91,23 @@ router.get('/monitor/writer-max-batch-size', async (ctx, _next) => {
   const body = await sidetreeCore.monitor.getWriterMaxBatchSize();
   const response = { status: ResponseStatus.Succeeded, body };
   setKoaResponse(response, ctx.response);
+});
+
+router.get('/dids', async (ctx, _next) => {
+  const type = ctx.request.query["type"];
+  if (!type) {
+    ctx.response.status = 400;
+  } else {
+    const maxFiles = ctx.request.query["limit"] | 20;
+
+    let suffixes = new Array<any>();
+    await crawler.getDidsWithType(type, didSuffixes => {
+      suffixes.push(...didSuffixes);
+    }, maxFiles);
+
+    ctx.response.body = suffixes;
+    ctx.response.status = 200;
+  }
 });
 
 app.use(router.routes())
