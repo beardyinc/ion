@@ -21,9 +21,6 @@ interface ServerConfig extends SidetreeConfig {
   /** Port to be used by the server. */
   port: number;
 
-  /** a 4byte string in the base64 alphabet to mark a gaia-x did */
-  didType: string;
-
   /** database that holds transactions with CAS hashes*/
   transactionDatabaseName: string;
 }
