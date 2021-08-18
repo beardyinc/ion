@@ -20,24 +20,14 @@ export default class Crawler {
     public createDidSuffix (op: any): string {
         // canonicalize json
         let buffer: Buffer = JsonCanonicalizer.canonicalizeAsBuffer(op);
+
         // multihash
         let multihash = Multihash.hash(buffer, 18);
-        // encode to base64url
 
+        // encode to base64url
         let encodedMultihash = Encoder.encode(multihash);
 
-        let shortFormDid = `did:ion:${encodedMultihash}`;
-
-        return shortFormDid;
-        // const initialState = {
-        //     suffixData: op.suffixData,
-        //     delta: op.delta
-        // };
-        // // Initial state must be canonicalized as per spec.
-        // const canonicalizedInitialStateBuffer = JsonCanonicalizer.canonicalizeAsBuffer(initialState);
-        // const encodedCanonicalizedInitialStateString = Encoder.encode(canonicalizedInitialStateBuffer);
-        // const longFormDid = `${shortFormDid}:${encodedCanonicalizedInitialStateString}`;
-        // return longFormDid;
+        return `did:ion:${encodedMultihash}`;
     }
 
     public async getDidsWithType (didType: string, callback: (didSuffixes: string[]) => any, maxFiles: number = 20) {
@@ -47,11 +37,13 @@ export default class Crawler {
 
         let allTransactions = await transactionStore.getTransactions();
 
-        //travel back in time by reversing it
+        //travel back in time by reversing it.
+        // we start at the youngest block and go back as many as "maxFiles" specifies
         let ipfsLookupCoreIndexFileHashes = allTransactions.reverse().map(trans => trans.anchorString);
 
         let count = 0;
         for (let encodedHash of ipfsLookupCoreIndexFileHashes) {
+            // they come in the form <NumOps>.<Hash>
             let hash = encodedHash.split(".")[1];
             let buffer = (await this.cas.read(hash, 100000)).content;
             zlib.gunzip(buffer, (error: Error | null, result: Buffer) => {
