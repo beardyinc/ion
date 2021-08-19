@@ -61,7 +61,7 @@ export default class Crawler {
                         // @ts-ignore
                         let operationsWithGaiaxType = cif.operations.create.filter(co => co.suffixData.type === didType);
                         if (operationsWithGaiaxType.length > 0) {
-                            let dids = operationsWithGaiaxType.map((op: any) => this.createDidSuffix(op));
+                            let dids = operationsWithGaiaxType.map((op: any) => this.createDidSuffix(op.suffixData));
                             callback(dids);
                         }
                     }
