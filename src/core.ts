@@ -95,12 +95,13 @@ router.get('/dids', async (ctx, _next) => {
   if (!type) {
     ctx.response.status = 400;
   } else {
-    const maxFiles = ctx.request.query["limit"] | 20;
+    let maxFiles = +ctx.request.query["limit"];
+    if(!maxFiles) maxFiles= 20;
 
     let suffixes = new Array<any>();
-    await crawler.getDidsWithType(type, didSuffixes => {
+    await crawler.getDidsWithType(type, maxFiles, didSuffixes => {
       suffixes.push(...didSuffixes);
-    }, maxFiles);
+    });
 
     ctx.response.body = suffixes;
     ctx.response.status = 200;

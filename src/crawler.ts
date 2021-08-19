@@ -22,7 +22,7 @@ export default class Crawler {
         let buffer: Buffer = JsonCanonicalizer.canonicalizeAsBuffer(op);
 
         // multihash
-        let multihash = Multihash.hash(buffer, 18);
+        let multihash = Multihash.hash(buffer, 18); //18 is SHA256
 
         // encode to base64url
         let encodedMultihash = Encoder.encode(multihash);
@@ -30,25 +30,30 @@ export default class Crawler {
         return `did:ion:${encodedMultihash}`;
     }
 
-    public async getDidsWithType (didType: string, callback: (didSuffixes: string[]) => any, maxFiles: number = 20) {
+    public async getDidsWithType (didType: string, maxFiles: number = 20, callback: (didSuffixes: string[]) => any) {
         let transactionStore = new MongoDbTransactionStore();
         await transactionStore.initialize(this.mongoConnectionString, this.databaseName);
-        console.log(`Parsing ${await transactionStore.getTransactionsCount()} transactions`);
+        console.log(`Parsing top ${maxFiles} of ${await transactionStore.getTransactionsCount()} transactions`);
 
-        let allTransactions = await transactionStore.getTransactions();
+        let allTransactions = (await transactionStore.getTransactions()).reverse();
 
         //travel back in time by reversing it.
         // we start at the youngest block and go back as many as "maxFiles" specifies
-        let ipfsLookupCoreIndexFileHashes = allTransactions.reverse().map(trans => trans.anchorString);
+        let ipfsLookupCoreIndexFileHashes = allTransactions.map(trans => trans.anchorString);
 
         let count = 0;
         for (let encodedHash of ipfsLookupCoreIndexFileHashes) {
             // they come in the form <NumOps>.<Hash>
             let hash = encodedHash.split(".")[1];
-            let buffer = (await this.cas.read(hash, 100000)).content;
+            let coreIndexFile = await this.cas.read(hash, 100000);
+            if(coreIndexFile.code !== 'success'){
+                console.error(`Received error from CAS: ${coreIndexFile.code}`);
+                continue;
+            }
+            let buffer = coreIndexFile.content;
             zlib.gunzip(buffer, (error: Error | null, result: Buffer) => {
                 if (error) {
-                    // console.error(error);
+                    console.error(error);
                 } else {
                     let str = result.toString();
                     let cif = JSON.parse(str);
