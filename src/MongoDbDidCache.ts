@@ -72,7 +72,7 @@ export default class MongoDbDidCache {
     }
 
     public async initialize (serverUrl: string, databaseName: string): Promise<void> {
-        if (this.db == null || this.cacheEntryCollection == null) {
+        if (!this.db || !this.cacheEntryCollection) {
             // @ts-ignore
             const client = await MongoClient.connect(serverUrl, {useNewUrlParser: true}); // `useNewUrlParser` addresses nodejs's URL parser deprecation warning.
             this.db = client.db(databaseName);
