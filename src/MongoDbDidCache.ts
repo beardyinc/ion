@@ -60,6 +60,7 @@ export default class MongoDbDidCache {
                 didSuffix: didSuffix,
                 didType: didType
             };
+            console.log('adding new entry to cache');
             await this.cacheEntryCollection?.insertOne(newEntry);
 
         } catch (error) {
