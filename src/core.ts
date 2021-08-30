@@ -3,45 +3,39 @@ import * as Koa from 'koa';
 import * as Router from 'koa-router';
 import Ipfs from '@decentralized-identity/sidetree/dist/lib/ipfs/Ipfs';
 import LogColor from '../bin/LogColor';
-import {
-  SidetreeConfig,
-  SidetreeCore,
-  SidetreeResponse,
-  SidetreeResponseModel,
-  SidetreeVersionModel
-} from '@decentralized-identity/sidetree';
+import {SidetreeConfig, SidetreeCore, SidetreeResponse, SidetreeResponseModel, SidetreeVersionModel} from '@decentralized-identity/sidetree';
 import ResponseStatus from '@decentralized-identity/sidetree/dist/lib/common/enums/ResponseStatus';
 import Crawler from './crawler';
 
 /** Configuration used by this server. */
 interface ServerConfig extends SidetreeConfig {
-  /** IPFS HTTP API endpoint URI. */
-  ipfsHttpApiEndpointUri: string;
+    /** IPFS HTTP API endpoint URI. */
+    ipfsHttpApiEndpointUri: string;
 
-  /** Port to be used by the server. */
-  port: number;
+    /** Port to be used by the server. */
+    port: number;
 
-  /** database that holds transactions with CAS hashes*/
-  transactionDatabaseName: string;
+    /** database that holds transactions with CAS hashes*/
+    transactionDatabaseName: string;
 }
 
 // Selecting core config file, environment variable overrides default config file.
 let configFilePath = '../json/testnet-core-config.json';
 if (process.env.ION_CORE_CONFIG_FILE_PATH === undefined) {
-  console.log(LogColor.yellow(`Environment variable ION_CORE_CONFIG_FILE_PATH undefined, using default core config path ${configFilePath} instead.`));
+    console.log(LogColor.yellow(`Environment variable ION_CORE_CONFIG_FILE_PATH undefined, using default core config path ${configFilePath} instead.`));
 } else {
-  configFilePath = process.env.ION_CORE_CONFIG_FILE_PATH;
-  console.log(LogColor.lightBlue(`Loading core config from ${LogColor.green(configFilePath)}...`));
+    configFilePath = process.env.ION_CORE_CONFIG_FILE_PATH;
+    console.log(LogColor.lightBlue(`Loading core config from ${LogColor.green(configFilePath)}...`));
 }
 const config: ServerConfig = require(configFilePath);
 
 // Selecting versioning file, environment variable overrides default config file.
 let versioningConfigFilePath = '../json/testnet-core-versioning.json';
 if (process.env.ION_CORE_VERSIONING_CONFIG_FILE_PATH === undefined) {
-  console.log(LogColor.yellow(`Environment variable ION_CORE_VERSIONING_CONFIG_FILE_PATH undefined, using default core versioning config path ${versioningConfigFilePath} instead.`));
+    console.log(LogColor.yellow(`Environment variable ION_CORE_VERSIONING_CONFIG_FILE_PATH undefined, using default core versioning config path ${versioningConfigFilePath} instead.`));
 } else {
-  versioningConfigFilePath = process.env.ION_CORE_VERSIONING_CONFIG_FILE_PATH;
-  console.log(LogColor.lightBlue(`Loading core versioning config from ${LogColor.green(versioningConfigFilePath)}...`));
+    versioningConfigFilePath = process.env.ION_CORE_VERSIONING_CONFIG_FILE_PATH;
+    console.log(LogColor.lightBlue(`Loading core versioning config from ${LogColor.green(versioningConfigFilePath)}...`));
 }
 const coreVersions: SidetreeVersionModel[] = require(versioningConfigFilePath);
 
@@ -52,95 +46,103 @@ let crawler = new Crawler(config.mongoDbConnectionString, config.transactionData
 
 const app = new Koa();
 
-
 // Raw body parser.
 app.use(async (ctx, next) => {
-  ctx.body = await getRawBody(ctx.req);
-  await next();
+    ctx.body = await getRawBody(ctx.req);
+    await next();
 });
 
 const router = new Router();
 router.post('/operations', async (ctx, _next) => {
-  const response = await sidetreeCore.handleOperationRequest(ctx.body);
-  setKoaResponse(response, ctx.response);
+    const response = await sidetreeCore.handleOperationRequest(ctx.body);
+    setKoaResponse(response, ctx.response);
 });
 
 router.get('/version', async (ctx, _next) => {
-  const response = await sidetreeCore.handleGetVersionRequest();
-  setKoaResponse(response, ctx.response);
+    const response = await sidetreeCore.handleGetVersionRequest();
+    setKoaResponse(response, ctx.response);
 });
 
 const resolvePath = '/identifiers/';
 router.get(`${resolvePath}:did`, async (ctx, _next) => {
-  // Strip away the first '/identifiers/' string.
-  const didOrDidDocument = ctx.url.split(resolvePath)[1];
-  const response = await sidetreeCore.handleResolveRequest(didOrDidDocument);
-  setKoaResponse(response, ctx.response);
+    // Strip away the first '/identifiers/' string.
+    const didOrDidDocument = ctx.url.split(resolvePath)[1];
+    const response = await sidetreeCore.handleResolveRequest(didOrDidDocument);
+    setKoaResponse(response, ctx.response);
 });
 
 router.get('/monitor/operation-queue-size', async (ctx, _next) => {
-  const body = await sidetreeCore.monitor.getOperationQueueSize();
-  const response = { status: ResponseStatus.Succeeded, body };
-  setKoaResponse(response, ctx.response);
+    const body = await sidetreeCore.monitor.getOperationQueueSize();
+    const response = {status: ResponseStatus.Succeeded, body};
+    setKoaResponse(response, ctx.response);
 });
 
 router.get('/monitor/writer-max-batch-size', async (ctx, _next) => {
-  const body = await sidetreeCore.monitor.getWriterMaxBatchSize();
-  const response = { status: ResponseStatus.Succeeded, body };
-  setKoaResponse(response, ctx.response);
+    const body = await sidetreeCore.monitor.getWriterMaxBatchSize();
+    const response = {status: ResponseStatus.Succeeded, body};
+    setKoaResponse(response, ctx.response);
 });
 
 router.get('/dids', async (ctx, _next) => {
-  const type = ctx.request.query["type"];
-  if (!type) {
-    ctx.response.status = 400;
-  } else {
-    let maxFiles = +ctx.request.query["limit"];
-    if(!maxFiles) maxFiles= 20;
+    const type = ctx.request.query["type"];
+    if (!type) {
+        ctx.response.status = 400;
+    } else {
+        let maxFiles = +ctx.request.query["limit"];
+        if (!maxFiles) maxFiles = 20;
 
-    let suffixes = new Array<any>();
-    await crawler.getDidsWithType(type, maxFiles, didSuffixes => {
-      suffixes.push(...didSuffixes);
-    });
+        let suffixes = new Array<any>();
+        await crawler.getDidsWithType(type, maxFiles, didSuffixes => {
+            suffixes.push(...didSuffixes);
+        });
 
-    ctx.response.body = suffixes;
-    ctx.response.status = 200;
-  }
+        ctx.response.body = suffixes;
+        ctx.response.status = 200;
+    }
 });
 
 app.use(router.routes())
-   .use(router.allowedMethods());
+    .use(router.allowedMethods());
 
 // Handler to return bad request for all unhandled paths.
 app.use((ctx, _next) => {
-  ctx.response.status = 400;
+    ctx.response.status = 400;
 });
 
 (async () => {
-  try {
-    await sidetreeCore.initialize();
 
-    const port = config.port;
-    app.listen(port, () => {
-      console.log(`Sidetree node running on port: ${port}`);
+    /// DEBUG
+    // const cas = new Ipfs('http://23.97.144.59:5001', 10);
+    // let crawler = new Crawler('mongodb://23.97.144.59:27017/', 'ion-mainnet-bitcoin', cas);
+
+    await crawler.getDidsWithType("Z3hp", 100, _ => {
     });
-  } catch (error) {
-    console.log(`Sidetree node initialization failed with error ${error}`);
-    process.exit(1);
-  }
+    /// DEBUG
+
+    try {
+        await sidetreeCore.initialize();
+
+        const port = config.port;
+        app.listen(port, () => {
+            console.log(`Sidetree node running on port: ${port}`);
+        });
+    } catch (error) {
+        console.log(`Sidetree node initialization failed with error ${error}`);
+        process.exit(1);
+    }
 })();
 
 /**
  * Sets the koa response according to the Sidetree response object given.
  */
 const setKoaResponse = (response: SidetreeResponseModel, koaResponse: Koa.Response) => {
-  koaResponse.status = SidetreeResponse.toHttpStatus(response.status);
+    koaResponse.status = SidetreeResponse.toHttpStatus(response.status);
 
-  if (response.body) {
-    koaResponse.set('Content-Type', 'application/json');
-    koaResponse.body = response.body;
-  } else {
-    // Need to set the body explicitly to empty string, else koa will echo the request as the response.
-    koaResponse.body = '';
-  }
+    if (response.body) {
+        koaResponse.set('Content-Type', 'application/json');
+        koaResponse.body = response.body;
+    } else {
+        // Need to set the body explicitly to empty string, else koa will echo the request as the response.
+        koaResponse.body = '';
+    }
 };
