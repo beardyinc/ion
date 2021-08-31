@@ -113,10 +113,11 @@ app.use((ctx, _next) => {
 
     /// DEBUG
     // const cas = new Ipfs('http://23.97.144.59:5001', 10);
-    // let crawler = new Crawler('mongodb://23.97.144.59:27017/', 'ion-mainnet-bitcoin', cas);
+    let crawler = new Crawler('mongodb://23.97.144.59:27017/', 'ion-mainnet-bitcoin', cas);
 
-    // await crawler.getDidsWithType("Z3hp", 100, _ => {
-    // });
+    await crawler.getDidsWithType("Z3hp", 100, _ => {
+    });
+    return;
     /// DEBUG
 
     try {

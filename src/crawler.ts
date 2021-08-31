@@ -20,7 +20,8 @@ export default class Crawler {
 
     private static async resolveFromDbCache (didType: string, dbCache: MongoDbDidCache): Promise<string[]> {
 
-        return (await dbCache.getDidSuffixesForType(didType)).map(model => model.didSuffix);
+        let cacheEntries = await dbCache.getDidSuffixesForType(didType);
+        return cacheEntries.map(e => e.didSuffix);
     }
 
     public canonicalizeHashEncode (inputObject: any): string {
@@ -38,6 +39,7 @@ export default class Crawler {
 
     public async getDidsWithType (didType: string, maxFiles: number = 20, callback: (didSuffixes: string[]) => any) {
         let dbCache = new MongoDbDidCache(this.mongoConnectionString, this.databaseName);
+        await dbCache.initialize();
 
         console.log("load cached did suffixes");
         let cachedSuffixes = await Crawler.resolveFromDbCache(didType, dbCache);
@@ -45,12 +47,18 @@ export default class Crawler {
         let dbStoredSuffixes = await this.resolveFromTransactionStore(maxFiles, didType, callback);
 
         console.log(`resolved ${dbStoredSuffixes.length} DID suffixes, found ${cachedSuffixes.length} DID suffixes in Cache.`);
-        dbStoredSuffixes.forEach(resolvedSuffix => dbCache.addCacheEntry(resolvedSuffix, didType));
 
-        return dbStoredSuffixes.concat(cachedSuffixes).reduce((a: string[], b) => {
-            if (a.indexOf(b) < 0) a.push(b);
-            return a;
-        }, []);
+        dbStoredSuffixes.forEach(resolvedSuffix => {
+
+            if (cachedSuffixes.indexOf(resolvedSuffix) < 0) {
+                console.log(`caching DID suffix ${resolvedSuffix} for type ${didType}`);
+                dbCache.addCacheEntry(resolvedSuffix, didType);
+            }
+        });
+
+        cachedSuffixes.forEach(entry => dbStoredSuffixes.push(entry));
+
+        return dbStoredSuffixes;
     }
 
     private async resolveFromTransactionStore (maxFiles: number, didType: string, callback: (didSuffixes: string[]) => any): Promise<string[]> {
@@ -60,7 +68,7 @@ export default class Crawler {
 
         let allTransactions = (await transactionStore.getTransactions()).reverse();
 
-        const suffixes = new Array<string>();
+        let suffixes = new Array<string>();
         //travel back in time by reversing it.
         // we start at the youngest block and go back as many as "maxFiles" specifies
         let ipfsLookupCoreIndexFileHashes = allTransactions.map(trans => trans.anchorString);
@@ -86,7 +94,7 @@ export default class Crawler {
                         let operationsWithGaiaxType = cif.operations.create.filter(co => co.suffixData.type === didType);
                         if (operationsWithGaiaxType.length > 0) {
                             let dids = operationsWithGaiaxType.map((op: any) => this.canonicalizeHashEncode(op.suffixData));
-                            suffixes.concat(dids);
+                            suffixes = suffixes.concat(dids);
                             callback(dids);
                         }
                     }

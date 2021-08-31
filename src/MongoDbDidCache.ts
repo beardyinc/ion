@@ -32,7 +32,7 @@ export default class MongoDbDidCache {
             console.log('Cache entry collection does not exists, creating...');
             cacheEntryCollection = await db.createCollection(this.collectionName);
             // Note the unique index, so duplicate inserts are rejected.
-            await cacheEntryCollection.createIndex({transactionNumber: 1}, {unique: true});
+            await cacheEntryCollection.createIndex({didSuffix: 1}, {unique: true});
             console.log('Cache entry collection created.');
         }
 
@@ -41,9 +41,8 @@ export default class MongoDbDidCache {
     }
 
     public async getDidSuffixesForType (type: string): Promise<DidCacheEntryModel[]> {
-        await this.initialize(this.serverUrl, this.databaseName);
 
-        let cacheEntries = await this.cacheEntryCollection?.find({didType: type}).toArray();
+        let cacheEntries = await this.cacheEntryCollection!.find({didType: type}).toArray();
 
         if (!cacheEntries) {
             cacheEntries = new Array(0);
@@ -53,15 +52,19 @@ export default class MongoDbDidCache {
     }
 
     public async addCacheEntry (didSuffix: string, didType: string): Promise<void> {
-        await this.initialize(this.serverUrl, this.databaseName);
 
         try {
+            const existing = await this.cacheEntryCollection!.find({didSuffix: didSuffix, didType: didType}).toArray();
+
+            if (existing && existing.length > 0) {
+                console.log(`a DID cache entry with suffix ${didSuffix}/${didType} already exists, skipping...`);
+                return;
+            }
             const newEntry: DidCacheEntryModel = {
                 didSuffix: didSuffix,
                 didType: didType
             };
-            console.log('adding new entry to cache');
-            await this.cacheEntryCollection?.insertOne(newEntry);
+            await this.cacheEntryCollection!.insertOne(newEntry);
 
         } catch (error) {
             // Swallow duplicate insert errors (error code 11000) as no-op; rethrow others
@@ -72,11 +75,11 @@ export default class MongoDbDidCache {
 
     }
 
-    public async initialize (serverUrl: string, databaseName: string): Promise<void> {
+    public async initialize (): Promise<void> {
         if (!this.db || !this.cacheEntryCollection) {
             // @ts-ignore
-            const client = await MongoClient.connect(serverUrl, {useNewUrlParser: true}); // `useNewUrlParser` addresses nodejs's URL parser deprecation warning.
-            this.db = client.db(databaseName);
+            const client = await MongoClient.connect(this.serverUrl, {useNewUrlParser: true}); // `useNewUrlParser` addresses nodejs's URL parser deprecation warning.
+            this.db = client.db(this.databaseName);
             this.cacheEntryCollection = await MongoDbDidCache.createTransactionCollectionIfNotExist(this.db);
         }
     }
