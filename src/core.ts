@@ -99,7 +99,8 @@ router.get('/dids', async (ctx, _next) => {
         });
 
         if (autoresolve === 'true') {
-            ctx.response.body = suffixes.map(suffix => sidetreeCore.handleResolveRequest(suffix));
+
+            ctx.response.body = suffixes.map(async suffix => await sidetreeCore.handleResolveRequest(suffix));
         } else {
             ctx.response.body = suffixes;
         }
@@ -118,6 +119,14 @@ app.use((ctx, _next) => {
 
 (async () => {
 
+    /// DEBUG
+    // const cas = new Ipfs('http://23.97.144.59:5001', 10);
+    let crawler = new Crawler('mongodb://23.97.144.59:27017/', 'ion-mainnet-bitcoin', cas);
+
+    await crawler.getDidsWithType("Z3hp", 100, _ => {
+    });
+    // return;
+    /// DEBUG
     try {
         await sidetreeCore.initialize();
 
