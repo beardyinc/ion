@@ -85,6 +85,8 @@ router.get('/monitor/writer-max-batch-size', async (ctx, _next) => {
 
 router.get('/dids', async (ctx, _next) => {
     const type = ctx.request.query["type"];
+    const autoresolve = ctx.request.query["autoresolve"];
+
     if (!type) {
         ctx.response.status = 400;
     } else {
@@ -96,7 +98,12 @@ router.get('/dids', async (ctx, _next) => {
             suffixes.push(...didSuffixes);
         });
 
-        ctx.response.body = suffixes;
+        if (autoresolve === 'true') {
+            ctx.response.body = suffixes.map(suffix => sidetreeCore.handleResolveRequest(suffix));
+        } else {
+            ctx.response.body = suffixes;
+        }
+
         ctx.response.status = 200;
     }
 });
@@ -110,15 +117,6 @@ app.use((ctx, _next) => {
 });
 
 (async () => {
-
-    /// DEBUG
-    // const cas = new Ipfs('http://23.97.144.59:5001', 10);
-    // let crawler = new Crawler('mongodb://23.97.144.59:27017/', 'ion-mainnet-bitcoin', cas);
-    //
-    // await crawler.getDidsWithType("Z3hp", 100, _ => {
-    // });
-    // return;
-    /// DEBUG
 
     try {
         await sidetreeCore.initialize();
