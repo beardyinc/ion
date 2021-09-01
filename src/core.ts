@@ -99,8 +99,13 @@ router.get('/dids', async (ctx, _next) => {
         });
 
         if (autoresolve === 'true') {
+            let docs = new Array<any>();
+            for (const suffix of suffixes) {
+                let doc = await sidetreeCore.handleResolveRequest(suffix);
+                docs.push(doc);
+            }
 
-            ctx.response.body = suffixes.map(async suffix => await sidetreeCore.handleResolveRequest(suffix));
+            ctx.response.body = docs;
         } else {
             ctx.response.body = suffixes;
         }
