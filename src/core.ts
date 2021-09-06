@@ -42,7 +42,7 @@ const coreVersions: SidetreeVersionModel[] = require(versioningConfigFilePath);
 const ipfsFetchTimeoutInSeconds = 10;
 const cas = new Ipfs(config.ipfsHttpApiEndpointUri, ipfsFetchTimeoutInSeconds);
 const sidetreeCore = new SidetreeCore(config, coreVersions, cas);
-let crawler = new Crawler(config.mongoDbConnectionString, config.transactionDatabaseName || 'ion-mainnet-bitcoin', cas);
+let crawler = new Crawler(config.mongoDbConnectionString, config.transactionDatabaseName || config.databaseName, cas);
 
 const app = new Koa();
 
