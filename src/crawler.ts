@@ -37,14 +37,14 @@ export default class Crawler {
         return `did:ion:${encodedMultihash}`;
     }
 
-    public async getDidsWithType (didType: string, maxFiles: number = 20, callback: (didSuffixes: string[]) => any) {
+    public async getDidsWithType (didType: string, maxFiles: number = 20) {
         let dbCache = new MongoDbDidCache(this.mongoConnectionString, this.databaseName);
         await dbCache.initialize();
 
         console.log("load cached did suffixes");
         let cachedSuffixes = await Crawler.resolveFromDbCache(didType, dbCache);
         console.log("resolve did suffixes from IPFS");
-        let dbStoredSuffixes = await this.resolveFromTransactionStore(maxFiles, didType, callback);
+        let dbStoredSuffixes = await this.resolveFromTransactionStore(maxFiles, didType);
 
         console.log(`resolved ${dbStoredSuffixes.length} DID suffixes, found ${cachedSuffixes.length} DID suffixes in Cache.`);
 
@@ -61,7 +61,7 @@ export default class Crawler {
         return dbStoredSuffixes;
     }
 
-    private async resolveFromTransactionStore (maxFiles: number, didType: string, callback: (didSuffixes: string[]) => any): Promise<string[]> {
+    private async resolveFromTransactionStore (maxFiles: number, didType: string): Promise<string[]> {
         let transactionStore = new MongoDbTransactionStore();
         await transactionStore.initialize(this.mongoConnectionString, this.databaseName);
         console.log(`Parsing top ${maxFiles} of ${await transactionStore.getTransactionsCount()} transactions`);
@@ -95,7 +95,6 @@ export default class Crawler {
                         if (operationsWithGaiaxType.length > 0) {
                             let dids = operationsWithGaiaxType.map((op: any) => this.canonicalizeHashEncode(op.suffixData));
                             suffixes = suffixes.concat(dids);
-                            callback(dids);
                         }
                     }
                 }
